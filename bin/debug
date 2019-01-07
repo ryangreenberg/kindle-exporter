@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+
+require 'bundler/setup'
+require 'nokogiri'
+require 'byebug'
+require 'json'
+
+require_relative '../extract'
+
+def main(args)
+  file = args.first
+  abort "Usage: #{$PROGRAM_NAME} <file>" unless file
+  doc = Nokogiri::HTML(File.read(file))
+  debugger
+  highlights = extract_highlights(doc)
+  puts JSON.pretty_generate(highlights)
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__

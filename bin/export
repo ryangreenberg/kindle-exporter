@@ -1,0 +1,125 @@
+#!/usr/bin/env ruby
+
+require 'bundler/setup'
+require 'json'
+require 'mechanize'
+require 'nokogiri'
+require 'optparse'
+
+require_relative '../extract'
+
+def parsed_options(args)
+  options = {
+    session: nil,
+    output: nil,
+    delay: 1,
+  }
+
+  parser = OptionParser.new do |opts|
+    opts.on('-s', '--session=FILE', 'Path to file containing active Amazon session') do |file|
+      options[:session] = file
+    end
+
+    opts.on('-o', '--output=DIR', 'Directory to output highlights (default: highlights)') do |dir|
+      options[:output] = dir
+    end
+
+    opts.on('-d', '--delay=NUM', 'Delay in seconds between requests (default: 1)') do |secs|
+      options[:delay] = Integer(delay)
+    end
+  end
+
+  options[:remaining] = parser.parse(args)
+  options
+end
+
+# Create a Mechanize agent with the user agent and cookies specified in the given curl string
+def agent_from_curl(curl_string)
+  domain = '.amazon.com'
+  uri = ".amazon.com"
+  cookies = curl_string.match(/-H 'Cookie: .+?'/)[0].sub(/^-H 'Cookie: /, '').sub(/'$/, '')
+  user_agent = curl_string.match(/-H 'User-Agent: .+?'/)[0].sub(/^-H 'User-Agent: /, '').sub(/'$/, '')
+
+  jar = HTTP::CookieJar.new
+  cookies.split(/; ?/).each do |cookie|
+    # Some cookies contain = in the value
+    name, value = cookie.split('=', 2)
+
+    # Remove quotation marks around values which get double-escaped and cause problems
+    value = value.strip.gsub(/^"|"$/, '')
+
+    jar << HTTP::Cookie.new(name, value, domain: domain, path: '/')
+  end
+
+  Mechanize.new do |agent|
+    agent.cookie_jar = jar
+    agent.user_agent = user_agent
+    agent.follow_meta_refresh = true
+    agent.redirect_ok = true
+  end
+end
+
+# This doesn't work because the sign in page sometimes requires a CAPTCHA
+def sign_in(username)
+  agent = Mechanize.new do |agent|
+    agent.user_agent_alias = 'Windows IE 11'
+    agent.follow_meta_refresh = true
+    agent.redirect_ok = true
+  end
+
+  agent.get('https://read.amazon.com/notebook') do |page|
+    print "Password? "
+    password = STDIN.gets.strip
+
+    form = page.form_with(:name => 'signIn') do |form|
+      form.email = username
+      form.password = password
+    end
+
+    page = agent.submit(form)
+  end
+end
+
+def main(args)
+  options = parsed_options(args)
+
+  abort "Missing required --session" unless options[:session]
+  agent = agent_from_curl(File.read(options[:session]))
+
+  output_dir = options[:output] || File.expand_path('./highlights')
+  FileUtils.mkdir_p(output_dir)
+
+  page = agent.get('https://read.amazon.com/notebook')
+  abort "Unable to sign in with provided session" if page.title =~ /Sign In/
+
+  books = extract_books(page.root)
+  puts "Found #{books.length} books..."
+  books.each { |book| puts book[:title] }
+
+  books.each do |book|
+    puts "Downloading annotations for #{book[:title]}..."
+    sleep options[:delay]
+
+    highlights_page = agent.get("https://read.amazon.com/notebook?asin=#{book[:asin]}&contentLimitState=")
+    debug_file = File.join(output_dir, "#{book[:asin]}.html")
+    File.write(debug_file, highlights_page.root.to_xml)
+
+    highlights = extract_highlights(highlights_page.root)
+
+    file = File.join(output_dir, "#{book[:asin]}.json")
+    now = Time.now
+    data = {
+      title: book[:title],
+      author: book[:author],
+      asin: book[:asin],
+      downloaded_at: now,
+      downloaded_at_timestamp: now.to_i,
+      highlights: highlights,
+    }
+    File.write(file, JSON.pretty_generate(data))
+    puts "Saved #{highlights.size} highlights to #{file}"
+    puts
+  end
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__
