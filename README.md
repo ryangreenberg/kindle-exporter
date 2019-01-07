@@ -14,3 +14,31 @@ It would be nice if this script could accept your Amazon username and password a
 Run `bin/export --session <your file>`
 
 The output is stored in a directory with one JSON file per book. The source HTML is also saved for debugging.
+
+## Format
+
+Each output file will include the book's title, author, ASIN number, and a list of highlights. Highlights have the following format:
+
+```
+{
+  // Arbitrary identifier
+  "id": "QTMwMlUyS0pTS0Y4VU86QjAwQVlRTlI0NjozMDQ1MDpISUdITElHSFQ6YTFLSEtLODJWM0JYS1o",
+
+  // Color of the highlight, or "note" if the entry is a freestanding note with no highlighted text
+  "color": "yellow",
+
+  // "location" or "page", depending on what the book supports
+  "position_type": "location",
+
+  // where the highlight is found
+  "position": "204",
+
+  // the highlighted text
+  // will be null if the entry is a freestanding note
+  "highlight": "The first step in acquiring any new skill is not being able to do your own thing but being able to reproduce what other people have done before you. This is the quickest way to mastering a skill.",
+
+  // user-entered text about the highlight
+  // will be null if there is no note associated with the highlighted text
+  "note": null
+},
+```
