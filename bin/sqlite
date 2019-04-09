@@ -1,0 +1,63 @@
+#!/usr/bin/env ruby
+
+USAGE = "#{$PROGRAM_NAME} <db> <highlights directory>"
+
+require 'json'
+require 'sequel'
+
+def create_schema(db)
+  unless db.tables.include?(:books)
+    db.create_table(:books) do
+      primary_key :id
+      String :title
+      String :author
+      String :asin, unique: true
+    end
+  end
+
+  unless db.tables.include?(:highlights)
+    db.create_table(:highlights) do
+      String :id, unique: true
+      Integer :book_id
+      String :color
+      String :position_type
+      String :position
+      String :highlight, text: true
+      String :note, text: true
+    end
+  end
+end
+
+def main(args)
+  abort USAGE if args.empty?
+
+  db = Sequel.connect("sqlite://" + (args.first || "highlights.db"))
+  highlights_dir = args[1] || File.expand_path('../../highlights', __FILE__)
+
+  create_schema(db)
+  files = Dir.glob("#{highlights_dir}/*.json")
+  files.each do |file|
+    puts file
+    data = JSON.parse(File.read(file))
+    puts data["title"]
+    db[:books].insert_conflict.insert(title: data["title"], author: data["author"], asin: data["asin"])
+    book = db[:books].where(asin: data["asin"]).first
+    book_id = book[:id]
+    data["highlights"].each do |highlight|
+      print '.'
+      row = {
+        id: highlight["id"],
+        book_id: book_id,
+        color: highlight["color"],
+        position_type: highlight["position_type"],
+        position: highlight["position"],
+        highlight: highlight["highlight"],
+        note: highlight["note"],
+      }
+      db[:highlights].insert_conflict.insert(row)
+    end
+    puts
+  end
+end
+
+main(ARGV) if $PROGRAM_NAME == __FILE__

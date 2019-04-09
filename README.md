@@ -15,6 +15,10 @@ Run `bin/export --session <your file>`
 
 The output is stored in a directory with one JSON file per book. The source HTML is also saved for debugging.
 
+## SQLite DB
+
+Use `bin/sqlite` to convert the JSON highlights to a SQLite database.
+
 ## Format
 
 Each output file will include the book's title, author, ASIN number, and a list of highlights. Highlights have the following format:
