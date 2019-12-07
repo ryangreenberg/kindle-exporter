@@ -25,7 +25,7 @@ def parsed_options(args)
     end
 
     opts.on('-d', '--delay=NUM', 'Delay in seconds between requests (default: 1)') do |secs|
-      options[:delay] = Integer(delay)
+      options[:delay] = Integer(secs)
     end
   end
 
