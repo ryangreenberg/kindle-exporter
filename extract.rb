@@ -43,12 +43,16 @@ def extract_highlights(doc)
     note_text = note_node ? note_node.text : nil
     note_text = nil if note_text.strip.empty?
 
+    truncated_node = node.css('.kp-notebook-highlight-truncated').first
+    is_truncated = !truncated_node.nil?
+
     {
       id: id,
       color: color,
       position_type: location_type,
       position: location_num,
       highlight: highlight_text,
+      truncated: is_truncated,
       note: note_text,
     }
   end
