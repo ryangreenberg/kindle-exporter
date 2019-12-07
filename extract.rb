@@ -18,6 +18,38 @@ def extract_books(doc)
   end
 end
 
+def each_page(agent, asin)
+    # Look for .kp-notebook-annotations-next-page-start and .kp-notebook-content-limit-state
+    # token=.kp-notebook-annotations-next-page-start
+    # contentLimitState=.kp-notebook-content-limit-state
+    content_limit_state = nil
+    next_page_start = nil
+
+    # TODO: Return Enumerator so .with_index works
+    idx = 0
+
+    page = agent.get("https://read.amazon.com/notebook?asin=#{asin}&contentLimitState=#{content_limit_state}")
+    yield page, idx
+
+    while true
+      idx += 1
+      next_page_start = begin
+        node = page.root.css('.kp-notebook-annotations-next-page-start').first
+        node.nil? ? nil : node.attr('value')
+      end
+      content_limit_state = begin
+        node = page.root.css('.kp-notebook-content-limit-state').first
+        node.nil? ? nil : node.attr('value')
+      end
+
+      break if next_page_start.nil?
+
+      page = agent.get("https://read.amazon.com/notebook?asin=#{asin}&contentLimitState=#{content_limit_state}&token=#{next_page_start}")
+      yield page, idx
+    end
+end
+
+
 # Return all the highlights found in the HTML of the given Nokogiri node
 def extract_highlights(doc)
   highlight_nodes = doc.css('#kp-annotation-location').map {|ea| ea.parent.parent.parent }

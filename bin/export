@@ -100,11 +100,14 @@ def main(args)
     puts "Downloading annotations for #{book[:title]}..."
     sleep options[:delay]
 
-    highlights_page = agent.get("https://read.amazon.com/notebook?asin=#{book[:asin]}&contentLimitState=")
-    debug_file = File.join(output_dir, "#{book[:asin]}.html")
-    File.write(debug_file, highlights_page.root.to_xml)
+    highlights = []
 
-    highlights = extract_highlights(highlights_page.root)
+    each_page(agent, book[:asin]) do |highlights_page, idx|
+      debug_file = File.join(output_dir, "#{book[:asin]}_#{idx}.html")
+      File.write(debug_file, highlights_page.root.to_xml)
+
+      highlights += extract_highlights(highlights_page.root)
+    end
 
     file = File.join(output_dir, "#{book[:asin]}.json")
     now = Time.now
