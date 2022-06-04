@@ -37,8 +37,8 @@ end
 def agent_from_curl(curl_string)
   domain = '.amazon.com'
   uri = ".amazon.com"
-  cookies = curl_string.match(/-H 'Cookie: .+?'/)[0].sub(/^-H 'Cookie: /, '').sub(/'$/, '')
-  user_agent = curl_string.match(/-H 'User-Agent: .+?'/)[0].sub(/^-H 'User-Agent: /, '').sub(/'$/, '')
+  cookies = curl_string.match(/-H 'Cookie: .+?'/i)[0].sub(/^-H 'Cookie: /i, '').sub(/'$/, '')
+  user_agent = curl_string.match(/-H 'User-Agent: .+?'/i)[0].sub(/^-H 'User-Agent: /i, '').sub(/'$/, '')
 
   jar = HTTP::CookieJar.new
   cookies.split(/; ?/).each do |cookie|
